@@ -53,7 +53,7 @@ def _degrees_to_compass(deg):
 
 # ---------------------------------------------------------------------------
 # Property registry
-# Each entry: api_key, label, format_fn
+# Each entry: api_key, label, format_fn, json_fn
 # ---------------------------------------------------------------------------
 
 def _temp_fmt(v):
@@ -65,76 +65,99 @@ def _wind_speed_fmt(v):
 def _pressure_fmt(v):
     return f"{_pa_to_inhg(v):.2f} inHg  ({v / 100:.1f} hPa)"
 
+def _temp_json(v):
+    return {"fahrenheit": round(_c_to_f(v), 1), "celsius": round(v, 1)}
+
+def _wind_speed_json(v):
+    return {"mph": round(_kmh_to_mph(v), 1), "kmh": round(v, 1)}
+
+def _pressure_json(v):
+    return {"inhg": round(_pa_to_inhg(v), 2), "hpa": round(v / 100, 1)}
+
 PROPERTIES = {
     "temperature": {
         "api_key": "temperature",
         "label": "Temperature",
         "format": _temp_fmt,
+        "json": _temp_json,
     },
     "humidity": {
         "api_key": "relativeHumidity",
         "label": "Humidity",
         "format": lambda v: f"{v:.1f}%",
+        "json": lambda v: {"percent": round(v, 1)},
     },
     "dewpoint": {
         "api_key": "dewpoint",
         "label": "Dewpoint",
         "format": _temp_fmt,
+        "json": _temp_json,
     },
     "wind-chill": {
         "api_key": "windChill",
         "label": "Wind Chill",
         "format": _temp_fmt,
+        "json": _temp_json,
     },
     "heat-index": {
         "api_key": "heatIndex",
         "label": "Heat Index",
         "format": _temp_fmt,
+        "json": _temp_json,
     },
     "wind": {
         "api_key": "windSpeed",
         "label": "Wind Speed",
         "format": _wind_speed_fmt,
+        "json": _wind_speed_json,
     },
     "wind-direction": {
         "api_key": "windDirection",
         "label": "Wind Direction",
         "format": lambda v: f"{_degrees_to_compass(v)}  ({v:.0f}°)",
+        "json": lambda v: {"compass": _degrees_to_compass(v), "degrees": round(v)},
     },
     "wind-gust": {
         "api_key": "windGust",
         "label": "Wind Gust",
         "format": _wind_speed_fmt,
+        "json": _wind_speed_json,
     },
     "pressure": {
         "api_key": "barometricPressure",
         "label": "Pressure",
         "format": _pressure_fmt,
+        "json": _pressure_json,
     },
     "sea-pressure": {
         "api_key": "seaLevelPressure",
         "label": "Sea Level Pressure",
         "format": _pressure_fmt,
+        "json": _pressure_json,
     },
     "visibility": {
         "api_key": "visibility",
         "label": "Visibility",
         "format": lambda v: f"{_m_to_mi(v):.1f} mi  ({v / 1000:.1f} km)",
+        "json": lambda v: {"miles": round(_m_to_mi(v), 1), "km": round(v / 1000, 1)},
     },
     "max-temp": {
         "api_key": "maxTemperatureLast24Hours",
         "label": "Max Temp (24h)",
         "format": _temp_fmt,
+        "json": _temp_json,
     },
     "min-temp": {
         "api_key": "minTemperatureLast24Hours",
         "label": "Min Temp (24h)",
         "format": _temp_fmt,
+        "json": _temp_json,
     },
     "precipitation": {
         "api_key": "precipitationLast3Hours",
         "label": "Precipitation (3h)",
         "format": lambda v: f"{v * 0.0393701:.2f} in  ({v:.1f} mm)",
+        "json": lambda v: {"inches": round(v * 0.0393701, 2), "mm": round(v, 1)},
     },
 }
 
@@ -271,6 +294,11 @@ def main():
         action="store_true",
         help="list all available properties and exit",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="output results as JSON (progress messages go to stderr)",
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -289,28 +317,49 @@ def main():
         print(f"Run with --list to see available properties.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Looking up '{args.city}'...")
+    log = (lambda msg: print(msg, file=sys.stderr)) if args.json else print
+
+    log(f"Looking up '{args.city}'...")
     lat, lon, display_name = geocode(args.city)
 
-    print("Fetching weather data...")
+    log("Fetching weather data...")
     station_name, station_id, obs_props = get_observation(lat, lon)
 
-    print()
-    print(f"Location : {display_name}")
-    print(f"Station  : {station_name} ({station_id})")
-    print(f"Observed : {format_timestamp(obs_props.get('timestamp'))}")
-    print()
-
-    label_width = max(len(PROPERTIES[p]["label"]) for p in args.properties)
+    # Collect values for all requested properties
+    prop_values = {}
     for prop_name in args.properties:
         meta = PROPERTIES[prop_name]
         raw = obs_props.get(meta["api_key"], {})
-        value = raw.get("value") if isinstance(raw, dict) else None
-        label = meta["label"]
-        if value is not None:
-            print(f"{label:<{label_width}}  :  {meta['format'](value)}")
-        else:
-            print(f"{label:<{label_width}}  :  Data unavailable")
+        prop_values[prop_name] = raw.get("value") if isinstance(raw, dict) else None
+
+    if args.json:
+        ts = obs_props.get("timestamp")
+        output = {
+            "location": display_name,
+            "station": {"name": station_name, "id": station_id},
+            "observed": ts,
+            "properties": {
+                name: (PROPERTIES[name]["json"](v) if v is not None else None)
+                for name, v in prop_values.items()
+            },
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print()
+        print(f"Location : {display_name}")
+        print(f"Station  : {station_name} ({station_id})")
+        print(f"Observed : {format_timestamp(obs_props.get('timestamp'))}")
+        print()
+
+        label_width = max(len(PROPERTIES[p]["label"]) for p in args.properties)
+        for prop_name in args.properties:
+            meta = PROPERTIES[prop_name]
+            value = prop_values[prop_name]
+            label = meta["label"]
+            if value is not None:
+                print(f"{label:<{label_width}}  :  {meta['format'](value)}")
+            else:
+                print(f"{label:<{label_width}}  :  Data unavailable")
 
 
 if __name__ == "__main__":

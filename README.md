@@ -24,6 +24,10 @@ python3 weather.py "Denver, CO" -p temperature humidity dewpoint wind wind-chill
 
 # List all available properties
 python3 weather.py --list
+
+# Output as JSON (progress messages go to stderr, JSON to stdout)
+python3 weather.py --json
+python3 weather.py "Denver, CO" -p temperature dewpoint wind wind-direction --json
 ```
 
 ## Available Properties
@@ -47,6 +51,7 @@ python3 weather.py --list
 
 ## Example Output
 
+**Human-readable (default):**
 ```
 Looking up 'Denver, CO'...
 Fetching weather data...
@@ -60,6 +65,22 @@ Humidity     :  70.9%
 Dewpoint     :  16.9°F  (-8.4°C)
 Wind Speed   :  11.4 mph  (18.4 km/h)
 Wind Chill   :  14.3°F  (-9.9°C)
+```
+
+**JSON (`--json`):**
+```json
+{
+  "location": "Denver, Colorado, US",
+  "station": { "name": "Buckley Space Force Base", "id": "KBKF" },
+  "observed": "2026-02-19T15:58:00+00:00",
+  "properties": {
+    "temperature": { "fahrenheit": 25.0, "celsius": -3.9 },
+    "humidity": { "percent": 70.9 },
+    "dewpoint": { "fahrenheit": 16.9, "celsius": -8.4 },
+    "wind": { "mph": 11.4, "kmh": 18.4 },
+    "wind-chill": { "fahrenheit": 14.3, "celsius": -9.9 }
+  }
+}
 ```
 
 ## How It Works
