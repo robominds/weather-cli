@@ -285,8 +285,8 @@ def main():
         metavar="PROP",
         default=DEFAULT_PROPERTIES,
         help=(
-            f"properties to display (default: {' '.join(DEFAULT_PROPERTIES)}). "
-            "Use --list to see all available properties."
+            f"one or more of: {', '.join(PROPERTIES)}. "
+            f"Defaults to: {', '.join(DEFAULT_PROPERTIES)}."
         ),
     )
     parser.add_argument(
@@ -302,12 +302,21 @@ def main():
     args = parser.parse_args()
 
     if args.list:
-        print("Available properties:")
-        max_len = max(len(k) for k in PROPERTIES)
-        for name, meta in PROPERTIES.items():
-            marker = " *" if name in DEFAULT_PROPERTIES else ""
-            print(f"  {name:<{max_len}}  {meta['label']}{marker}")
-        print(f"\n* default")
+        if args.json:
+            print(json.dumps({
+                "default": DEFAULT_PROPERTIES,
+                "properties": {
+                    name: {"label": meta["label"], "default": name in DEFAULT_PROPERTIES}
+                    for name, meta in PROPERTIES.items()
+                },
+            }, indent=2))
+        else:
+            max_len = max(len(k) for k in PROPERTIES)
+            print("Available properties:")
+            for name, meta in PROPERTIES.items():
+                marker = " *" if name in DEFAULT_PROPERTIES else ""
+                print(f"  {name:<{max_len}}  {meta['label']}{marker}")
+            print("\n* default")
         return
 
     # Validate requested properties
