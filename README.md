@@ -47,3 +47,7 @@ Humidity     : 95.9%
 |--------|---------|------|
 | [api.weather.gov](https://www.weather.gov/documentation/services-web-api) | Current weather observations | Free, no key |
 | [geocoding-api.open-meteo.com](https://open-meteo.com/en/docs/geocoding-api) | City name → coordinates | Free, no key |
+
+## Author
+
+Mark Castelluccio
