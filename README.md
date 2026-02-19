@@ -1,6 +1,6 @@
 # weather-cli
 
-A command-line tool that retrieves current temperature and humidity for any US city using the National Weather Service API.
+A command-line tool that retrieves current weather data for any US city using the National Weather Service API. Temperature and humidity are shown by default; any combination of available properties can be requested via the `-p` flag.
 
 ## Requirements
 
@@ -10,27 +10,56 @@ A command-line tool that retrieves current temperature and humidity for any US c
 ## Usage
 
 ```bash
-# Default: Maple Valley, WA
+# Default: Maple Valley, WA — shows temperature and humidity
 python3 weather.py
 
 # Specify a city with optional state
 python3 weather.py "Seattle, WA"
 python3 weather.py "Portland, OR"
 python3 weather.py Chicago
+
+# Request specific properties with -p / --properties
+python3 weather.py "Seattle, WA" -p wind wind-direction pressure visibility
+python3 weather.py "Denver, CO" -p temperature humidity dewpoint wind wind-chill
+
+# List all available properties
+python3 weather.py --list
 ```
+
+## Available Properties
+
+| Property | Description |
+|----------|-------------|
+| `temperature` | Temperature °F / °C *(default)* |
+| `humidity` | Relative humidity % *(default)* |
+| `dewpoint` | Dewpoint °F / °C |
+| `wind-chill` | Wind chill °F / °C |
+| `heat-index` | Heat index °F / °C |
+| `wind` | Wind speed mph / km/h |
+| `wind-direction` | Wind direction (compass + degrees) |
+| `wind-gust` | Wind gust mph / km/h |
+| `pressure` | Barometric pressure inHg / hPa |
+| `sea-pressure` | Sea level pressure inHg / hPa |
+| `visibility` | Visibility mi / km |
+| `max-temp` | Max temperature last 24h |
+| `min-temp` | Min temperature last 24h |
+| `precipitation` | Precipitation last 3h in / mm |
 
 ## Example Output
 
 ```
-Looking up 'Maple Valley, WA'...
+Looking up 'Denver, CO'...
 Fetching weather data...
 
-Location : Maple Valley, Washington, US
-Station  : EW6690 Maple Valley (E6690)
-Observed : 2026-02-18 10:19 PM PST
+Location : Denver, Colorado, US
+Station  : Buckley Space Force Base (KBKF)
+Observed : 2026-02-19 07:58 AM PST
 
-Temperature  : 32.0°F  (0.0°C)
-Humidity     : 95.9%
+Temperature  :  25.0°F  (-3.9°C)
+Humidity     :  70.9%
+Dewpoint     :  16.9°F  (-8.4°C)
+Wind Speed   :  11.4 mph  (18.4 km/h)
+Wind Chill   :  14.3°F  (-9.9°C)
 ```
 
 ## How It Works
@@ -39,7 +68,7 @@ Humidity     : 95.9%
 
 2. **Grid lookup** — The coordinates are sent to the [NWS Points API](https://www.weather.gov/documentation/services-web-api) (`/points/{lat},{lon}`) to identify the nearest forecast office and observation station list.
 
-3. **Observation** — The latest observation is fetched from the nearest station and the temperature (°F/°C) and relative humidity are displayed.
+3. **Observation** — The latest observation is fetched from the nearest station and the requested properties are displayed.
 
 ## Data Sources
 
